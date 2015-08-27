@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+
+
+require 'ruby_expect'
+username=ENV['username']
+password=ENV['password']
+hostname = ARGV[0]
+
+status = ""
+puts "connecting..."
+exp = RubyExpect::Expect.spawn("/usr/bin/ssh -o StrictHostKeyChecking=no #{username}@#{hostname}")
+puts "connected"
+
+exp.procedure do
+  retval = 0
+  while (status != "loggedin" )
+    retval = any do
+      expect /assword:\s*$/ do
+        puts "sending password..."
+        send password
+      end
+      expect /\$\s*$/ do
+        puts "logged in"
+        send 'sudo su -'
+        status = "loggedin"
+      end
+    end
+  end
+
+  while (status != "sudoed" )
+    retval = any do
+      expect /assword.*:.*/ do
+        puts "sending sudo password..."
+        send password
+      end
+      expect /\#\s*$/ do
+        puts "sudoed in"
+        send ''
+        status = "sudoed"
+      end
+
+    end
+  end
+
+  # Expect each of the following
+  each do
+    expect /.*/ do # expect the output of uptime
+      puts "all set to use"
+      send ''
+      exp.interact
+    end
+end
+end
+
